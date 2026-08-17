@@ -660,3 +660,114 @@ Both are expected to normalize to the same `unnest` shape as the BigQuery exampl
 
 - `UNNEST` used directly in the `SELECT` list rather than a table reference (some dialects allow this) isn't distinguished from the `FROM`/`JOIN` form by a different `kind` — v0.1 only tracks `location` (`from`/`join`), not this finer distinction. Candidate gap if it turns out to matter.
 - Unnesting a literal array (`UNNEST([1, 2, 3])`) has an empty or absent `source_columns`, same convention as `COUNT(*)` and literal-only `compute` expressions.
+
+---
+
+## `ai_function`
+
+**Meaning:** a call to a recognized AI/ML SQL function.
+
+**Grounding — read this before the example.** Every category above this one is grounded in a specific `sqlglot` AST node class. `ai_function` isn't — `sqlglot` has no dedicated node for "this is an AI vendor function," so it parses as an ordinary function call (a recognized dialect `Func` subclass, or `exp.Anonymous` if unrecognized). Detection here is **function-name matching against a maintained allowlist**, not AST-node matching. See `docs/decisions.md` (0003) for the full reasoning and the consequences (an implementation must own and maintain that allowlist; expect false negatives for functions not yet in it).
+
+**Example:**
+
+```sql
+-- Snowflake Cortex
+SELECT ticket_id, AI_COMPLETE('llama3-8b', prompt_text) AS response
+FROM support_tickets
+```
+
+```json
+{
+  "ai_function": [
+    { "function": "ai_complete", "output": "response", "argument_summary": "'llama3-8b', prompt_text", "source_columns": ["prompt_text"] }
+  ]
+}
+```
+
+**Dialect examples (illustrative — allowlist entries an implementation would need, not verified `sqlglot` parse output):**
+
+```sql
+-- BigQuery
+SELECT ML.GENERATE_TEXT(MODEL my_model, prompt_text) AS response FROM support_tickets
+```
+
+```sql
+-- Databricks
+SELECT ai_query('my-endpoint', prompt_text) AS response FROM support_tickets
+```
+
+**Edge cases:**
+
+- An unrecognized AI-shaped function call (not yet in the tagger's allowlist) is not tagged `ai_function` — it silently falls through to `udf` instead (see below), since the tagger has no way to distinguish "unknown AI function" from "unknown UDF" by name alone. This is the expected failure mode of name-based detection, not a bug to work around per-query.
+- GDTO does not enumerate specific AI/ML function names anywhere in the schema or this doc, deliberately — see `docs/decisions.md` (0003) for why.
+
+---
+
+## `udf`
+
+**Meaning:** a call to a user-defined (non-builtin) function.
+
+**Grounding:** same basis as `ai_function` — no dedicated `sqlglot` node. In practice this is usually `exp.Anonymous` (`sqlglot`'s fallback for a function name it doesn't recognize as a builtin for the query's dialect). A tagger should check the `ai_function` allowlist first; only tag `udf` if that doesn't match. See `docs/decisions.md` (0003).
+
+**Example:**
+
+```sql
+SELECT customer_id, my_schema.normalize_phone(phone_number) AS phone
+FROM customers
+```
+
+```json
+{
+  "udf": [
+    { "function": "my_schema.normalize_phone", "output": "phone", "argument_summary": "phone_number", "source_columns": ["phone_number"] }
+  ]
+}
+```
+
+**Edge cases:**
+
+- `ai_function` and `udf` are **mutually exclusive** by the precedence rule above — this is a deliberate exception to the "categories overlap" pattern from `docs/decisions.md` (0002), because here the two categories are competing classifications of the same node, not orthogonal signals about different aspects of it.
+- A genuine dialect builtin that `sqlglot` doesn't yet recognize for that dialect (parses as `exp.Anonymous` even though it's not actually user-defined) is indistinguishable from a real UDF at this layer — a known false-positive source, not solvable without a per-dialect builtin registry GDTO doesn't maintain.
+
+---
+
+## `column_hash`
+
+**Meaning:** a call to a hashing function.
+
+**Grounding:** mostly a normal, AST-node-grounded category — `exp.MD5`, `exp.SHA`, `exp.SHA2` are real dedicated `sqlglot` nodes. Dialect-specific hash functions `sqlglot` has no dedicated class for (Snowflake's generic `HASH()`, BigQuery's `FARM_FINGERPRINT`) fall back to function-name matching, the same mechanism `ai_function`/`udf` use as their *primary* basis — here it's only a fallback for the minority of cases. Don't read `column_hash`'s overall confidence as equivalent to `ai_function`/`udf`'s; it's much closer to `conditional`/`cast`'s dialect-normalization story.
+
+**Example:**
+
+```sql
+SELECT customer_id, SHA2(email, 256) AS email_hash FROM customers
+```
+
+```json
+{
+  "column_hash": [
+    { "function": "sha2", "argument_summary": "email", "output": "email_hash", "algorithm_bits": 256, "source_columns": ["email"] }
+  ]
+}
+```
+
+**Dialect fallback example:**
+
+```sql
+-- Snowflake
+SELECT customer_id, HASH(email) AS email_hash FROM customers
+```
+
+```json
+{
+  "column_hash": [
+    { "function": "hash", "argument_summary": "email", "output": "email_hash", "source_columns": ["email"] }
+  ]
+}
+```
+
+**Edge cases:**
+
+- Hashing multiple columns together (`SHA2(CONCAT(first_name, last_name), 256)`) still produces one `column_hash` entry — `argument_summary` captures the whole argument expression as a string, and `source_columns` lists every column referenced within it (`["first_name", "last_name"]`), same convention as `compute`.
+- `column_hash` doesn't imply anything about *why* a column is hashed (PII masking vs. a dedup surrogate key vs. a partition key) — that judgment is a consumer's rule to build on top of this tag, not something GDTO infers.

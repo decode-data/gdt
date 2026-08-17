@@ -255,6 +255,61 @@
               }
             }
           }
+        },
+        "ai_function": {
+          "type": "array",
+          "description": "One entry per call to a recognized AI/ML SQL function (e.g. Snowflake Cortex AI_COMPLETE/AI_CLASSIFY, BigQuery ML.GENERATE_TEXT/AI.GENERATE, Databricks ai_query). Unlike every other category, this is NOT grounded in a dedicated sqlglot AST node — sqlglot has no special node for 'this is an AI vendor function,' so detection is function-name-based against a maintained allowlist. See docs/decisions.md (0003) for the reasoning and consequences (allowlist maintenance burden, expected false negatives for unrecognized/renamed functions).",
+          "items": {
+            "type": "object",
+            "required": ["function"],
+            "properties": {
+              "function": { "type": "string", "description": "The called function name, lowercased/normalized (e.g. 'ai_complete', 'ml.generate_text')" },
+              "output": { "type": "string", "description": "Output column alias, if aliased" },
+              "argument_summary": { "type": "string", "description": "Summary of the call's arguments" },
+              "source_columns": {
+                "type": "array",
+                "items": { "type": "string" },
+                "description": "Column names referenced in the call's arguments"
+              }
+            }
+          }
+        },
+        "udf": {
+          "type": "array",
+          "description": "One entry per call to an unrecognized/non-builtin function — typically exp.Anonymous in sqlglot. Like ai_function, NOT grounded in a dedicated AST node; see docs/decisions.md (0003). A tagger should check ai_function's allowlist first — an AI function call is tagged ai_function, not udf. False positives are possible for a genuine builtin sqlglot doesn't yet recognize for a given dialect.",
+          "items": {
+            "type": "object",
+            "required": ["function"],
+            "properties": {
+              "function": { "type": "string", "description": "The called function name as written, schema-qualified if present (e.g. 'my_schema.my_udf')" },
+              "output": { "type": "string", "description": "Output column alias, if aliased" },
+              "argument_summary": { "type": "string", "description": "Summary of the call's arguments" },
+              "source_columns": {
+                "type": "array",
+                "items": { "type": "string" },
+                "description": "Column names referenced in the call's arguments"
+              }
+            }
+          }
+        },
+        "column_hash": {
+          "type": "array",
+          "description": "One entry per call to a hashing function. Mostly grounded in dedicated sqlglot nodes (exp.MD5, exp.SHA, exp.SHA2); dialect-specific hash functions sqlglot has no dedicated class for (e.g. Snowflake HASH(), BigQuery FARM_FINGERPRINT) fall back to function-name matching, same basis as ai_function/udf but as a fallback rather than the primary detection path — see docs/decisions.md (0003).",
+          "items": {
+            "type": "object",
+            "required": ["function", "argument_summary"],
+            "properties": {
+              "function": { "type": "string", "description": "Hash function name, lowercased, e.g. md5, sha1, sha256, hash, farm_fingerprint" },
+              "argument_summary": { "type": "string", "description": "Summary of the expression(s) being hashed" },
+              "output": { "type": "string", "description": "Output column alias, if aliased" },
+              "algorithm_bits": { "type": "integer", "description": "Bit length if specified, e.g. 256 for SHA2(x, 256)" },
+              "source_columns": {
+                "type": "array",
+                "items": { "type": "string" },
+                "description": "Column names referenced in the hashed expression(s)"
+              }
+            }
+          }
         }
       },
       "additionalProperties": false
