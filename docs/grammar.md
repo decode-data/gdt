@@ -135,7 +135,7 @@ SELECT amount * (1 + tax_rate) AS total_with_tax FROM orders
 ```json
 {
   "compute": [
-    { "output": "total_with_tax", "expression_summary": "amount * (1 + tax_rate)" }
+    { "output": "total_with_tax", "expression_summary": "amount * (1 + tax_rate)", "source_columns": ["amount", "tax_rate"] }
   ]
 }
 ```
@@ -151,7 +151,7 @@ produces **both**:
 ```json
 {
   "compute": [
-    { "output": "is_active", "expression_summary": "CASE WHEN status = 'active' THEN 1 ELSE 0 END" }
+    { "output": "is_active", "expression_summary": "CASE WHEN status = 'active' THEN 1 ELSE 0 END", "source_columns": ["status"] }
   ],
   "conditional": [
     {
@@ -165,7 +165,9 @@ produces **both**:
 }
 ```
 
-`compute` is decided purely by the top-level `Alias` test (lineage: "is this column derived at all?"); `conditional`/`cast`/`aggregate`/`window` are populated by a full-tree walk regardless of what wraps them (structure: "does branching/casting/aggregating/windowing happen anywhere?"). The two are independent, so both fire here. This also applies when the nesting is deeper — `CASE WHEN x THEN 1 ELSE 0 END * price AS weighted_flag` still emits a `conditional` entry for the nested `CASE` even though the `compute` entry's `expression_summary` is the whole multiplication, not just the `CASE`.
+`compute` is decided purely by the top-level `Alias` test (lineage: "is this column derived at all?"); `conditional`/`cast`/`aggregate`/`window` are populated by a full-tree walk regardless of what wraps them (structure: "does branching/casting/aggregating/windowing happen anywhere?"). The two are independent, so both fire here. This also applies when the nesting is deeper — `CASE WHEN x THEN 1 ELSE 0 END * price AS weighted_flag` still emits a `conditional` entry for the nested `CASE` even though the `compute` entry's `expression_summary` is the whole multiplication, not just the `CASE`; that `compute` entry's `source_columns` would be `["x", "price"]` — every column referenced anywhere in the full expression, not just the ones in the nested `CASE`.
+
+`compute`, `aggregate`, `cast`, and `window` all carry a `source_columns` field (every `exp.Column` found in the relevant expression's subtree) — a lightweight, structural lineage signal. It's deliberately not a lineage graph: no cross-model resolution, no multi-hop tracing through CTEs/joins, just "which columns does this specific expression reference." Full column lineage stays out of scope (see README → "What this is not").
 
 ---
 
@@ -191,14 +193,16 @@ GROUP BY customer_id
       "argument_summary": "amount",
       "output": "total_spent",
       "distinct": false,
-      "group_by_keys": ["customer_id"]
+      "group_by_keys": ["customer_id"],
+      "source_columns": ["amount"]
     },
     {
       "function": "count",
       "argument_summary": "order_id",
       "output": "order_count",
       "distinct": true,
-      "group_by_keys": ["customer_id"]
+      "group_by_keys": ["customer_id"],
+      "source_columns": ["order_id"]
     }
   ]
 }
@@ -208,6 +212,7 @@ GROUP BY customer_id
 
 - One entry per aggregate function call, **not** one entry per `GROUP BY` clause — `group_by_keys` is repeated verbatim on every aggregate belonging to the same query. A query with three aggregate calls and one `GROUP BY customer_id` produces three `aggregate` entries, each carrying `group_by_keys: ["customer_id"]`. This is a deliberate flat/denormalized choice matching the rest of the spec's per-occurrence style, not a bug.
 - A bare scalar aggregate with no `GROUP BY` (`SELECT SUM(amount) FROM orders`) has an empty or absent `group_by_keys` and no `output` (nothing aliases it).
+- `COUNT(*)` has no column argument — `source_columns` is empty or absent, `argument_summary` is `"*"`.
 - `SELECT SUM(amount) AS total_spent ...` is aliased — this is simultaneously a `compute` occurrence (`Alias` wrapping a non-`Column`) by the same reasoning as the `CASE` edge case above. v0.1 tags it in **both** `aggregate` and `compute`, consistent with the "not mutually exclusive" decision in `docs/decisions.md` (0002).
 
 ---
@@ -240,7 +245,8 @@ FROM orders
       "output": "running_total",
       "partition_by": ["customer_id"],
       "order_by": ["order_date"],
-      "frame": { "kind": "rows", "start": "UNBOUNDED PRECEDING", "end": "CURRENT ROW" }
+      "frame": { "kind": "rows", "start": "UNBOUNDED PRECEDING", "end": "CURRENT ROW" },
+      "source_columns": ["amount"]
     }
   ]
 }
@@ -269,7 +275,7 @@ SELECT CAST(order_id AS VARCHAR) AS order_id_str FROM orders
 ```json
 {
   "cast": [
-    { "source_summary": "order_id", "target_type": "varchar", "output": "order_id_str", "safe": false }
+    { "source_summary": "order_id", "target_type": "varchar", "output": "order_id_str", "safe": false, "source_columns": ["order_id"] }
   ]
 }
 ```
@@ -293,7 +299,7 @@ Both normalize to:
 ```json
 {
   "cast": [
-    { "source_summary": "raw_value", "target_type": "numeric", "output": "parsed_value", "safe": true }
+    { "source_summary": "raw_value", "target_type": "numeric", "output": "parsed_value", "safe": true, "source_columns": ["raw_value"] }
   ]
 }
 ```

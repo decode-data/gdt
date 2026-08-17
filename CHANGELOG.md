@@ -4,7 +4,9 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Version
 
 ## [Unreleased]
 
-Nothing yet.
+### Added
+
+- `source_columns` field on `compute`, `aggregate`, `cast`, and `window` entries — the column names referenced in that entry's expression, as a lightweight structural lineage signal (not a lineage graph; see `docs/grammar.md` → Compute for scope).
 
 ## [0.1.0] - 2026-08-17
 
