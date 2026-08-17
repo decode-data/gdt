@@ -30,6 +30,9 @@ Grounded in `sqlglot`'s `expressions` module (`core.py` for base nodes, `query.p
 | `conditional` | `exp.Case` | CASE/WHEN logic — dialect equivalents (`IFF`, `IF()`) normalize to the same shape |
 | `subquery_cte` | `exp.With` / `exp.CTE` / `exp.Subquery` | Structural complexity signal, not itself a transformation |
 | `wildcard_select` | `exp.Star` | `SELECT *` or `t.*`, optionally with dialect `EXCEPT(...)`. `REPLACE(...)` out of scope |
+| `json_parse` | `exp.ParseJSON` | String/variant parsed as JSON (`PARSE_JSON`) |
+| `json_extract` | `exp.JSONExtract` / `exp.JSONExtractScalar` | Path extraction — `->`/`->>`, `:`, `JSON_VALUE`/`JSON_QUERY` normalize to the same shape |
+| `unnest` | `exp.Unnest` | Array/semi-structured unnest. Dialect table functions (`LATERAL FLATTEN`, `LATERAL VIEW EXPLODE`) expected to normalize here |
 | `ai_function` | *(name-based, no dedicated node — see `docs/decisions.md` 0003)* | Known AI/ML SQL function calls, matched against a maintained allowlist |
 | `udf` | *(name-based, typically `exp.Anonymous` — see `docs/decisions.md` 0003)* | Fallback for unrecognized/non-builtin function calls not matched as `ai_function` |
 | `column_hash` | `exp.MD5` / `exp.SHA` / `exp.SHA2`, name-matching fallback for dialect extras | Hashing function calls (`MD5`, `SHA256`, `HASH`, `FARM_FINGERPRINT`, ...) |
