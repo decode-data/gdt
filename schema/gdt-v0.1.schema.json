@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/decode-data/gdt/schema/gdt-v0.1.schema.json",
-  "title": "GDT Tagged Summary",
-  "description": "The structured summary a GDT-conformant tagger emits for a single SQL query/model.",
+  "title": "gdt Tagged Summary",
+  "description": "The structured summary a gdt-conformant tagger emits for a single SQL query/model.",
   "type": "object",
   "required": ["gdt_version", "operations"],
   "properties": {
@@ -12,7 +12,7 @@
     },
     "operations": {
       "type": "object",
-      "description": "Keys are GDT category names; each value is an array of occurrences (empty array if the category is absent).",
+      "description": "Keys are gdt category names; each value is an array of occurrences (empty array if the category is absent).",
       "properties": {
         "join": {
           "type": "array",

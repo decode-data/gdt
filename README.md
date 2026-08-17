@@ -1,17 +1,17 @@
-# GDT — Grammar of Data Transformation
+# gdt — Grammar of Data Transformation
 
 **Status:** v0.2 — expect revision as real-world SQL patterns surface from downstream implementations.
 **License:** Apache 2.0 — a spec meant to be reimplemented against parsers other than `sqlglot` someday; the patent grant matters more here than for a single library.
 
 ## What this is
 
-A versioned taxonomy of SQL transformation operations, plus a JSON Schema for the structured summary a parser emits when it tags a query against this grammar. It is **not** a parser, and it is **not** `sqlglot`-specific by design — it's grounded in `sqlglot`'s expression classes because that's the first (and for now, only) implementation, but the vocabulary is meant to outlive that choice. Anyone building a SQL-comprehension tool should be able to implement GDT tagging without adopting `sqlglot`.
+A versioned taxonomy of SQL transformation operations, plus a JSON Schema for the structured summary a parser emits when it tags a query against this grammar. It is **not** a parser, and it is **not** `sqlglot`-specific by design — it's grounded in `sqlglot`'s expression classes because that's the first (and for now, only) implementation, but the vocabulary is meant to outlive that choice. Anyone building a SQL-comprehension tool should be able to implement gdt tagging without adopting `sqlglot`.
 
 ## What this is not
 
-- Not a linter, not a rules engine, not a lineage tool. Those are consumers of GDT output, not part of the spec.
+- Not a linter, not a rules engine, not a lineage tool. Those are consumers of gdt output, not part of the spec.
 - Not tied to dbt, or to any particular transformation tool or data stack — consumers may target dbt, plain SQL pipelines, a pandas/Spark job, or something else entirely.
-- Not a formatter/generator spec — style/formatting rules are a separate concern owned by whatever consumes GDT output.
+- Not a formatter/generator spec — style/formatting rules are a separate concern owned by whatever consumes gdt output.
 
 ## v0.2 categories
 
@@ -59,7 +59,7 @@ See `schema/gdt-v0.1.schema.json` for the authoritative JSON Schema. Example:
 
 ## Versioning
 
-Semantic versioning, independent of any implementation's release cadence. A MINOR bump adds a category or a field; a MAJOR bump changes the shape of an existing category. Implementations declare which GDT version they target.
+Semantic versioning, independent of any implementation's release cadence. A MINOR bump adds a category or a field; a MAJOR bump changes the shape of an existing category. Implementations declare which gdt version they target.
 
 ## Relationship to madflow-sqlops
 
@@ -67,11 +67,11 @@ Semantic versioning, independent of any implementation's release cadence. A MINO
 
 ## LLM-friendliness
 
-GDT isn't invokable, so it doesn't need a Skill — but it should be citation-friendly for any LLM reasoning about GDT output. The JSON Schema is the priming artifact, not this README — keep it as a single, complete, well-commented file an LLM can load whole into context. `docs/categories.md` is the compact reference for quick priming; this README carries the fuller discussion; `docs/grammar.md` carries the full worked-example/edge-case reference; `docs/decisions.md` records the architectural decisions (dialect/engine normalization, category overlap) that affect implementations.
+gdt isn't invokable, so it doesn't need a Skill — but it should be citation-friendly for any LLM reasoning about gdt output. The JSON Schema is the priming artifact, not this README — keep it as a single, complete, well-commented file an LLM can load whole into context. `docs/categories.md` is the compact reference for quick priming; this README carries the fuller discussion; `docs/grammar.md` carries the full worked-example/edge-case reference; `docs/decisions.md` records the architectural decisions (dialect/engine normalization, category overlap) that affect implementations.
 
-## Possible future addition: a GDT-native ruleset + verifier
+## Possible future addition: a gdt-native ruleset + verifier
 
-Not built now. "Which GDT operations are allowed on which matched models" is a GDT-level concept, distinct from a consuming application's own rules layer (which may also cover PII/style/strategy — app-specific concerns that don't belong here). If this ever gets built, it's a minimal, standalone, GDT-only ruleset schema + CLI verifier living in this repo — deliberately not in `madflow-sqlops`, which stays rule-free by design.
+Not built now. "Which gdt operations are allowed on which matched models" is a gdt-level concept, distinct from a consuming application's own rules layer (which may also cover PII/style/strategy — app-specific concerns that don't belong here). If this ever gets built, it's a minimal, standalone, gdt-only ruleset schema + CLI verifier living in this repo — deliberately not in `madflow-sqlops`, which stays rule-free by design.
 
 ## Status / open tasks
 
