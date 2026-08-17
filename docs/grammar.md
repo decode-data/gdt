@@ -2,7 +2,7 @@
 
 The full grammar reference: what each category means, its `sqlglot` mapping, at least one worked example with its expected GDTO output, and known edge cases. `docs/categories.md` is the compact table version of this for quick LLM priming; this doc carries the discussion. The authoritative shape for every field below is `schema/gdto-v0.1.schema.json` — if this doc and the schema ever disagree, the schema wins and this doc has a bug.
 
-Examples use generic ANSI SQL as the default. `join`, `filter`, `set_op`, `rename`, `compute`, `aggregate`, `subquery_cte` don't vary across dialects in ways that affect GDTO output, so one example suffices for each. `conditional` and `cast` do have real dialect-specific spellings (Snowflake `IFF`, BigQuery/DuckDB `IF()`, `TRY_CAST`/`SAFE_CAST`) that are exactly what the normalization decision in `docs/decisions.md` (0001) is about — those two sections show the dialect variants explicitly, to make the "same GDTO output regardless of spelling" claim concrete rather than asserted.
+Examples use generic ANSI SQL as the default. `join`, `filter`, `set_op`, `rename`, `compute`, `aggregate`, `subquery_cte` don't vary across dialects in ways that affect GDTO output, so one example suffices for each. `conditional`, `cast`, and `wildcard_select` do have real dialect-specific spellings (Snowflake `IFF`, BigQuery/DuckDB `IF()`, `TRY_CAST`/`SAFE_CAST`, BigQuery/Snowflake/DuckDB `SELECT * EXCEPT(...)`) that are exactly what the normalization decision in `docs/decisions.md` (0001) is about — those sections show the dialect variants explicitly, to make the "same GDTO output regardless of spelling" claim concrete rather than asserted.
 
 Every category is independent — see `docs/decisions.md` (0002) for why `compute` and the structural-signal categories (`conditional`, `cast`, `aggregate`, `window`) can and do overlap on the same query.
 
@@ -440,3 +440,60 @@ FROM (SELECT customer_id, COUNT(*) AS order_count FROM orders GROUP BY customer_
 - A `WITH` clause with multiple CTEs produces one `subquery_cte` entry per CTE, in declaration order — not one entry for the whole `WITH` block.
 - A correlated subquery in a `WHERE` clause (`WHERE EXISTS (SELECT 1 FROM ... WHERE inner.x = outer.x)`) is `kind: "subquery"`, `location: "where"` — correlation itself (the reference to the outer query) isn't separately flagged; only presence and location are.
 - A recursive CTE (`WITH RECURSIVE ...`) is tagged the same as a non-recursive one (`kind: "cte"`) — v0.1 has no `recursive` boolean field. Candidate for a future MINOR bump.
+
+---
+
+## `wildcard_select`
+
+**Meaning:** a `SELECT *` (or `t.*`) wildcard — selecting all columns rather than explicitly enumerating them. Exists so a consumer can build a rule like "forbid `SELECT *`" or "only allow `SELECT * EXCEPT(...)` for known-safe exclusions"; without it, `SELECT *` was invisible to GDTO (it's an `exp.Star` node, not an `exp.Alias`, so it doesn't match `rename` or `compute`).
+
+**`sqlglot` mapping:** `exp.Star` — appears bare (`SELECT *`) or as the `this` of a qualified `exp.Column` (`t.*`). Dialect-specific `EXCEPT(...)` support is exposed as extra args on the same node in dialects that have it (BigQuery, Snowflake, DuckDB).
+
+**Example — bare star:**
+
+```sql
+SELECT * FROM orders
+```
+
+```json
+{
+  "wildcard_select": [
+    { "kind": "star" }
+  ]
+}
+```
+
+**Example — qualified star:**
+
+```sql
+SELECT o.*, c.name FROM orders o JOIN customers c ON o.customer_id = c.id
+```
+
+```json
+{
+  "wildcard_select": [
+    { "kind": "qualified_star", "qualifier": "o" }
+  ]
+}
+```
+
+**Example — dialect `EXCEPT(...)`, same normalized shape across dialects (per `docs/decisions.md`, 0001):**
+
+```sql
+-- BigQuery / Snowflake / DuckDB
+SELECT * EXCEPT (internal_id, updated_at) FROM orders
+```
+
+```json
+{
+  "wildcard_select": [
+    { "kind": "star", "except_columns": ["internal_id", "updated_at"] }
+  ]
+}
+```
+
+**Edge cases:**
+
+- `REPLACE(...)` (BigQuery-style `SELECT * REPLACE (upper(name) AS name)`) is explicitly out of scope for v1 — no field captures it. Known gap, not an oversight; a plain `wildcard_select` entry is still emitted for the `*` itself, just without the replacement detail. Candidate for a future MINOR bump (a `replace_columns` field) if this turns out to matter in practice.
+- `COUNT(*)` does **not** produce a `wildcard_select` entry — that `*` is a function-call argument (`exp.Star` inside `exp.Count`), not a `SELECT *` in the projection list. Only `exp.Star` nodes appearing directly in the SELECT list are tagged here.
+- A query with both a wildcard and explicit columns (`SELECT *, computed_col AS x FROM t`) produces a `wildcard_select` entry for the `*` and, independently, whatever category the other selected expressions warrant (`compute` for `computed_col AS x` above) — the categories aren't exclusive of each other, same as everywhere else in GDTO.

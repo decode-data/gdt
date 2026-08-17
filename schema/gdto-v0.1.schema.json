@@ -159,6 +159,23 @@
               "location": { "type": "string", "description": "Where it's referenced, e.g. from, where, join" }
             }
           }
+        },
+        "wildcard_select": {
+          "type": "array",
+          "description": "One entry per exp.Star found in the SELECT list — a bare SELECT * or a qualified t.* — optionally with a dialect-specific EXCEPT(...) clause. REPLACE(...) is out of scope for v1; see docs/grammar.md.",
+          "items": {
+            "type": "object",
+            "required": ["kind"],
+            "properties": {
+              "kind": { "type": "string", "enum": ["star", "qualified_star"], "description": "star for a bare SELECT *; qualified_star for t.* / table.*" },
+              "qualifier": { "type": "string", "description": "Table alias or name, present only for qualified_star" },
+              "except_columns": {
+                "type": "array",
+                "items": { "type": "string" },
+                "description": "Column names excluded via a dialect-specific EXCEPT(...) clause (e.g. BigQuery, Snowflake, DuckDB), if present"
+              }
+            }
+          }
         }
       },
       "additionalProperties": false

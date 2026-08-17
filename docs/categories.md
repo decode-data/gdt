@@ -14,6 +14,7 @@ Compact reference, kept separate from the full README so an LLM (or a human) can
 | `cast` | `exp.Cast` | Type coercion |
 | `conditional` | `exp.Case` | CASE/WHEN logic — dialect equivalents (`IFF`, `IF()`) normalize to the same shape |
 | `subquery_cte` | `exp.With` / `exp.CTE` / `exp.Subquery` | Structural complexity signal, not itself a transformation |
+| `wildcard_select` | `exp.Star` | `SELECT *` or `t.*`, optionally with dialect `EXCEPT(...)`. `REPLACE(...)` out of scope |
 
 GDTO version: 0.1.
 

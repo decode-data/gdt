@@ -4,7 +4,9 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Version
 
 ## [Unreleased]
 
-Nothing yet.
+### Added
+
+- `wildcard_select` category for `SELECT *` / `t.*`, optionally with a dialect `EXCEPT(...)` clause — previously invisible to GDTO entirely. See issue #3.
 
 ## [0.1.0] - 2026-08-17
 
