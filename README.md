@@ -10,7 +10,7 @@ A versioned taxonomy of SQL transformation operations, plus a JSON Schema for th
 ## What this is not
 
 - Not a linter, not a rules engine, not a lineage tool. Those are consumers of GDTO output, not part of the spec.
-- Not tied to dbt, or to any particular data stack — consumers may target dbt, plain SQL pipelines, or something else entirely.
+- Not tied to dbt, or to any particular transformation tool or data stack — consumers may target dbt, plain SQL pipelines, a pandas/Spark job, or something else entirely.
 - Not a formatter/generator spec — style/formatting rules are a separate concern owned by whatever consumes GDTO output.
 
 ## v0.1 categories
@@ -32,7 +32,7 @@ Grounded in `sqlglot`'s `expressions` module (`core.py` for base nodes, `query.p
 
 See `docs/categories.md` for a compact, LLM-citation-friendly version of this table on its own.
 
-The `rename`/`compute` split matters most in practice: "is the immediate child of this `Alias` a bare `Column`" is the whole test, and it's what backs a rule like "staging models may only rename, never compute."
+The `rename`/`compute` split matters most in practice: "is the immediate child of this `Alias` a bare `Column`" is the whole test, and it's what backs a rule like "certain transformations may only rename, never compute."
 
 ## Output shape
 
