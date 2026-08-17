@@ -29,6 +29,7 @@ Grounded in `sqlglot`'s `expressions` module (`core.py` for base nodes, `query.p
 | `cast` | `exp.Cast` | Type coercion |
 | `conditional` | `exp.Case` | CASE/WHEN logic — dialect equivalents (`IFF`, `IF()`) normalize to the same shape |
 | `subquery_cte` | `exp.With` / `exp.CTE` / `exp.Subquery` | Structural complexity signal, not itself a transformation |
+| `wildcard_select` | `exp.Star` | `SELECT *` or `t.*`, optionally with dialect `EXCEPT(...)`. `REPLACE(...)` out of scope |
 
 See `docs/categories.md` for a compact, LLM-citation-friendly version of this table on its own.
 
