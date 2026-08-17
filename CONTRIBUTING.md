@@ -1,18 +1,18 @@
-# Contributing to GDT
+# Contributing to gdt
 
 All changes land via pull request against `main` — direct pushes are disabled by branch protection.
 
 ## Spec changes specifically
 
-GDT is a versioned spec other things depend on (`madflow-sqlops` pins a version; more implementations may exist later). Because of that:
+gdt is a versioned spec other things depend on (`madflow-sqlops` pins a version; more implementations may exist later). Because of that:
 
 - **State the version impact in the PR description**: does this change require a MINOR bump (new category, new optional field) or a MAJOR bump (changes the shape of an existing category)? See `README.md` → Versioning.
-- **Propose new categories via an issue first**, before a PR. A new GDT category affects every downstream implementation — worth discussing the `sqlglot` mapping and edge cases before it's code-reviewed as a fait accompli.
+- **Propose new categories via an issue first**, before a PR. A new gdt category affects every downstream implementation — worth discussing the `sqlglot` mapping and edge cases before it's code-reviewed as a fait accompli.
 - Changes to `schema/gdt-v0.1.schema.json` must keep the schema and `docs/categories.md` in sync — a PR touching one without the other will be asked to fix that before merge.
 
 ## Releases
 
-GDT is versioned with git tags and GitHub Releases so downstream implementations (`madflow-sqlops` and any future one) can pin a specific version instead of floating against `main`.
+gdt is versioned with git tags and GitHub Releases so downstream implementations (`madflow-sqlops` and any future one) can pin a specific version instead of floating against `main`.
 
 - **Tag format:** `vMAJOR.MINOR.0` — full semver, but the patch slot is always `0` since the spec's own versioning granularity (see `README.md` → Versioning) is MAJOR.MINOR only; it matches the `gdt_version` const in the schema (e.g. schema `"0.1"` → tag `v0.1.0`). A doc/typo fix with no version impact doesn't get a new tag at all — it just lands on `main` between releases.
 - **When to cut one:** after a PR that bumps `gdt_version` (or otherwise changes MINOR/MAJOR per the PR template's version-impact checklist) merges to `main`.

@@ -4,7 +4,9 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Version
 
 ## [Unreleased]
 
-Nothing yet.
+### Changed
+
+- Restyled "GDT" to lowercase "gdt" in prose throughout docs and the schema's `title`/`description` fields — a stylistic change only. Identifiers (`gdt_version`, `schema/gdt-v0.1.schema.json`, the `decode-data/gdt` repo name/`$id`) were already lowercase. Historical CHANGELOG entries below are left as originally published.
 
 ## [0.2.0] - 2026-08-17
 

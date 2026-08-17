@@ -1,4 +1,4 @@
-# GDT v0.2 — Category Reference
+# gdt v0.2 — Category Reference
 
 Compact reference, kept separate from the full README so an LLM (or a human) can load just this table into context without the surrounding discussion.
 
@@ -22,6 +22,6 @@ Compact reference, kept separate from the full README so an LLM (or a human) can
 | `udf` | *(name-based, typically `exp.Anonymous` — see `docs/decisions.md` 0003)* | Fallback for unrecognized/non-builtin function calls not matched as `ai_function` |
 | `column_hash` | `exp.MD5` / `exp.SHA` / `exp.SHA2`, name-matching fallback for dialect extras | Hashing function calls (`MD5`, `SHA256`, `HASH`, `FARM_FINGERPRINT`, ...) |
 
-GDT version: 0.2.
+gdt version: 0.2.
 
 See `docs/grammar.md` for the full reference (worked examples, edge cases) and `docs/decisions.md` for architectural decisions (dialect normalization, category overlap).
