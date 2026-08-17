@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/decode-data/gdto/schema/gdto-v0.1.schema.json",
   "title": "GDTO Tagged Summary",
-  "description": "DRAFT — not yet finalized. The structured summary a GDTO-conformant tagger emits for a single SQL query/model.",
+  "description": "The structured summary a GDTO-conformant tagger emits for a single SQL query/model.",
   "type": "object",
   "required": ["gdto_version", "operations"],
   "properties": {
@@ -58,11 +58,108 @@
             "properties": { "output": { "type": "string" }, "expression_summary": { "type": "string" } }
           }
         },
-        "aggregate": { "type": "array", "items": { "type": "object" } },
-        "window": { "type": "array", "items": { "type": "object" } },
-        "cast": { "type": "array", "items": { "type": "object" } },
-        "conditional": { "type": "array", "items": { "type": "object" } },
-        "subquery_cte": { "type": "array", "items": { "type": "object" } }
+        "aggregate": {
+          "type": "array",
+          "description": "One entry per aggregate function call (exp.Sum, exp.Count, exp.Avg, exp.Min, exp.Max, ...), not one entry per GROUP BY clause. group_by_keys is repeated on every aggregate belonging to the same query.",
+          "items": {
+            "type": "object",
+            "required": ["function", "argument_summary"],
+            "properties": {
+              "function": { "type": "string", "description": "Aggregate function name, lowercased, e.g. sum, count, avg, min, max" },
+              "argument_summary": { "type": "string", "description": "Summary of the aggregated expression, e.g. 'amount', 'customer_id', '*'" },
+              "output": { "type": "string", "description": "Output column alias, if the aggregate is aliased" },
+              "distinct": { "type": "boolean", "description": "True for e.g. COUNT(DISTINCT x) — exp.Distinct wrapping the argument" },
+              "group_by_keys": {
+                "type": "array",
+                "items": { "type": "string" },
+                "description": "Summaries of the query's GROUP BY expressions (exp.Group.expressions); empty/absent if the aggregate has no GROUP BY (e.g. a bare scalar aggregate)"
+              }
+            }
+          }
+        },
+        "window": {
+          "type": "array",
+          "description": "One entry per exp.Window (OVER clause).",
+          "items": {
+            "type": "object",
+            "required": ["function"],
+            "properties": {
+              "function": { "type": "string", "description": "The windowed function, e.g. row_number, rank, lag, lead, sum, avg" },
+              "output": { "type": "string", "description": "Output column alias, if aliased" },
+              "partition_by": {
+                "type": "array",
+                "items": { "type": "string" },
+                "description": "Summaries of PARTITION BY expressions (exp.Window.partition_by)"
+              },
+              "order_by": {
+                "type": "array",
+                "items": { "type": "string" },
+                "description": "Summaries of ORDER BY expressions within the OVER clause (exp.Window.order)"
+              },
+              "frame": {
+                "type": "object",
+                "description": "Frame spec (exp.WindowSpec), if the OVER clause defines one",
+                "properties": {
+                  "kind": { "type": "string", "enum": ["rows", "range"] },
+                  "start": { "type": "string", "description": "e.g. 'UNBOUNDED PRECEDING', '1 PRECEDING', 'CURRENT ROW'" },
+                  "end": { "type": "string", "description": "e.g. 'CURRENT ROW', 'UNBOUNDED FOLLOWING'" }
+                }
+              }
+            }
+          }
+        },
+        "cast": {
+          "type": "array",
+          "description": "One entry per exp.Cast (type coercion only — not date/number formatting functions).",
+          "items": {
+            "type": "object",
+            "required": ["source_summary", "target_type"],
+            "properties": {
+              "source_summary": { "type": "string", "description": "Summary of the expression being cast (exp.Cast.this)" },
+              "target_type": { "type": "string", "description": "Target data type, lowercased, e.g. varchar, int, timestamp (exp.Cast.to)" },
+              "output": { "type": "string", "description": "Output column alias, if the cast is aliased" },
+              "safe": { "type": "boolean", "description": "True for a safe/non-throwing cast variant (e.g. TRY_CAST, SAFE_CAST)" }
+            }
+          }
+        },
+        "conditional": {
+          "type": "array",
+          "description": "One entry per exp.Case (CASE/WHEN — including dialect-specific single-branch forms like IFF/IF that a tagger normalizes onto this same shape; see docs/decisions.md). Emitted for every occurrence found anywhere in the query, independent of whether the same node is also covered by a compute entry — see docs/grammar.md.",
+          "items": {
+            "type": "object",
+            "required": ["branches"],
+            "properties": {
+              "output": { "type": "string", "description": "Output column alias, if the conditional expression is the top-level aliased value" },
+              "operand_summary": { "type": "string", "description": "For simple CASE <expr> WHEN ... form, the compared expression (exp.Case.this); absent for searched CASE WHEN <bool> form" },
+              "branches": {
+                "type": "array",
+                "description": "Each WHEN/THEN pair (exp.Case.ifs)",
+                "items": {
+                  "type": "object",
+                  "required": ["condition", "result"],
+                  "properties": {
+                    "condition": { "type": "string" },
+                    "result": { "type": "string" }
+                  }
+                }
+              },
+              "default": { "type": "string", "description": "The ELSE expression summary (exp.Case.default), if present" }
+            }
+          }
+        },
+        "subquery_cte": {
+          "type": "array",
+          "description": "One entry per exp.CTE or exp.Subquery — a structural complexity signal, not itself a transformation; can co-occur with any other category.",
+          "items": {
+            "type": "object",
+            "required": ["kind"],
+            "properties": {
+              "kind": { "type": "string", "enum": ["cte", "subquery"], "description": "cte for a WITH-clause entry (exp.CTE), subquery for an inline derived table (exp.Subquery)" },
+              "alias": { "type": "string", "description": "The CTE/subquery alias name, if present" },
+              "location": { "type": "string", "description": "Where it's referenced, e.g. from, where, join" }
+            }
+          }
+        }
       },
       "additionalProperties": false
     }
