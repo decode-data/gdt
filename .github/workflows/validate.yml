@@ -26,7 +26,7 @@ jobs:
           import sys
           from jsonschema import Draft202012Validator
 
-          with open("schema/gdto-v0.1.schema.json") as f:
+          with open("schema/gdt-v0.1.schema.json") as f:
               schema = json.load(f)
 
           declared = schema.get("$schema", "")
@@ -35,7 +35,7 @@ jobs:
               sys.exit(1)
 
           Draft202012Validator.check_schema(schema)
-          print("schema/gdto-v0.1.schema.json is valid JSON Schema (2020-12)")
+          print("schema/gdt-v0.1.schema.json is valid JSON Schema (2020-12)")
           PY
 
       - name: Check schema / docs/categories.md sync
@@ -46,16 +46,16 @@ jobs:
 
           SCHEMA_CHANGED=false
           CATEGORIES_CHANGED=false
-          echo "$CHANGED" | grep -qx "schema/gdto-v0.1.schema.json" && SCHEMA_CHANGED=true
+          echo "$CHANGED" | grep -qx "schema/gdt-v0.1.schema.json" && SCHEMA_CHANGED=true
           echo "$CHANGED" | grep -qx "docs/categories.md" && CATEGORIES_CHANGED=true
 
           if [ "$SCHEMA_CHANGED" = true ] && [ "$CATEGORIES_CHANGED" = false ]; then
-            echo "::error::schema/gdto-v0.1.schema.json changed without docs/categories.md changing. Per CONTRIBUTING.md, a PR touching one must keep the other in sync (or explain in the PR description why not)."
+            echo "::error::schema/gdt-v0.1.schema.json changed without docs/categories.md changing. Per CONTRIBUTING.md, a PR touching one must keep the other in sync (or explain in the PR description why not)."
             exit 1
           fi
 
           if [ "$CATEGORIES_CHANGED" = true ] && [ "$SCHEMA_CHANGED" = false ]; then
-            echo "::error::docs/categories.md changed without schema/gdto-v0.1.schema.json changing. Per CONTRIBUTING.md, a PR touching one must keep the other in sync (or explain in the PR description why not)."
+            echo "::error::docs/categories.md changed without schema/gdt-v0.1.schema.json changing. Per CONTRIBUTING.md, a PR touching one must keep the other in sync (or explain in the PR description why not)."
             exit 1
           fi
 

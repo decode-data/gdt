@@ -1,8 +1,8 @@
-# GDTO v0.1 — Grammar
+# GDT v0.1 — Grammar
 
-The full grammar reference: what each category means, its `sqlglot` mapping, at least one worked example with its expected GDTO output, and known edge cases. `docs/categories.md` is the compact table version of this for quick LLM priming; this doc carries the discussion. The authoritative shape for every field below is `schema/gdto-v0.1.schema.json` — if this doc and the schema ever disagree, the schema wins and this doc has a bug.
+The full grammar reference: what each category means, its `sqlglot` mapping, at least one worked example with its expected GDT output, and known edge cases. `docs/categories.md` is the compact table version of this for quick LLM priming; this doc carries the discussion. The authoritative shape for every field below is `schema/gdt-v0.1.schema.json` — if this doc and the schema ever disagree, the schema wins and this doc has a bug.
 
-Examples use generic ANSI SQL as the default. `join`, `filter`, `set_op`, `rename`, `compute`, `aggregate`, `subquery_cte` don't vary across dialects in ways that affect GDTO output, so one example suffices for each. `conditional`, `cast`, and `wildcard_select` do have real dialect-specific spellings (Snowflake `IFF`, BigQuery/DuckDB `IF()`, `TRY_CAST`/`SAFE_CAST`, BigQuery/Snowflake/DuckDB `SELECT * EXCEPT(...)`) that are exactly what the normalization decision in `docs/decisions.md` (0001) is about — those sections show the dialect variants explicitly, to make the "same GDTO output regardless of spelling" claim concrete rather than asserted.
+Examples use generic ANSI SQL as the default. `join`, `filter`, `set_op`, `rename`, `compute`, `aggregate`, `subquery_cte` don't vary across dialects in ways that affect GDT output, so one example suffices for each. `conditional`, `cast`, and `wildcard_select` do have real dialect-specific spellings (Snowflake `IFF`, BigQuery/DuckDB `IF()`, `TRY_CAST`/`SAFE_CAST`, BigQuery/Snowflake/DuckDB `SELECT * EXCEPT(...)`) that are exactly what the normalization decision in `docs/decisions.md` (0001) is about — those sections show the dialect variants explicitly, to make the "same GDT output regardless of spelling" claim concrete rather than asserted.
 
 Every category is independent — see `docs/decisions.md` (0002) for why `compute` and the structural-signal categories (`conditional`, `cast`, `aggregate`, `window`) can and do overlap on the same query.
 
@@ -34,7 +34,7 @@ INNER JOIN customers c ON o.customer_id = c.id
 
 - A `CROSS JOIN` has no `ON` clause — `keys` is empty or omitted, `kind` is `"cross"`.
 - A multi-condition join (`ON a.x = b.x AND a.y = b.y`) lists every equality key in `keys`; a non-equality join condition (`ON a.x > b.x`) isn't representable as a key — falls back to being visible only via the query's overall structure, not encoded in `keys`. (Not solved in v0.1: no `condition_summary` fallback field exists yet for non-equi-joins. Candidate for a future MINOR bump if this turns out to matter in practice.)
-- A self-join (`orders o1 JOIN orders o2 ON ...`) lists `"orders"` twice in `tables` — the two occurrences are only distinguished by their aliases in the source SQL, which GDTO doesn't currently carry. Consumers needing to distinguish them must re-parse.
+- A self-join (`orders o1 JOIN orders o2 ON ...`) lists `"orders"` twice in `tables` — the two occurrences are only distinguished by their aliases in the source SQL, which GDT doesn't currently carry. Consumers needing to distinguish them must re-parse.
 
 ---
 
@@ -61,7 +61,7 @@ SELECT * FROM orders WHERE status = 'completed'
 **Edge cases:**
 
 - `HAVING` (`exp.Having`) is not `filter` — it post-filters aggregated rows, not source rows. v0.1 has no dedicated category for it; a `HAVING` clause is currently untagged. Worth a MINOR bump (new category `having_filter`, or extending `filter` with a `stage: "having"` field) once a real query surfaces the gap.
-- A `WHERE` with multiple `AND`-ed conditions is one `filter` entry with the whole conjunction in `summary`, not split into per-condition entries — GDTO tags "there is row-level filtering here and this is what it says," not a full boolean-expression decomposition.
+- A `WHERE` with multiple `AND`-ed conditions is one `filter` entry with the whole conjunction in `summary`, not split into per-condition entries — GDT tags "there is row-level filtering here and this is what it says," not a full boolean-expression decomposition.
 
 ---
 
@@ -116,7 +116,7 @@ SELECT cust_id AS customer_id FROM raw_customers
 **Edge cases:**
 
 - `SELECT t.cust_id AS customer_id` (table-qualified column) — `source` is the column name only (`"cust_id"`), not the qualified form (`"t.cust_id"`). The table qualifier is dropped; if that distinction matters to a consumer, it isn't currently preserved.
-- `SELECT cust_id FROM ...` with no `AS` at all isn't `rename` — there's no `Alias` node, so it isn't tagged as anything. Only explicit renames are tagged; passthrough-with-original-name is invisible to GDTO by design (nothing changed, nothing to tag).
+- `SELECT cust_id FROM ...` with no `AS` at all isn't `rename` — there's no `Alias` node, so it isn't tagged as anything. Only explicit renames are tagged; passthrough-with-original-name is invisible to GDT by design (nothing changed, nothing to tag).
 
 ---
 
@@ -254,7 +254,7 @@ FROM orders
 
 **Edge cases:**
 
-- No explicit frame clause (`OVER (PARTITION BY x ORDER BY y)` with no `ROWS`/`RANGE`) — `frame` is omitted entirely, not defaulted to the SQL-standard implicit frame. GDTO reports what's textually present, not what the engine would infer.
+- No explicit frame clause (`OVER (PARTITION BY x ORDER BY y)` with no `ROWS`/`RANGE`) — `frame` is omitted entirely, not defaulted to the SQL-standard implicit frame. GDT reports what's textually present, not what the engine would infer.
 - `ROW_NUMBER() OVER (PARTITION BY x)` with no `ORDER BY` — `order_by` is empty or absent; this is valid SQL for some window functions and not an error.
 - A window function used without an alias — `output` is omitted, same as unaliased `aggregate`.
 
@@ -264,7 +264,7 @@ FROM orders
 
 **Meaning:** an explicit type coercion.
 
-**`sqlglot` mapping:** `exp.Cast`. Scope is deliberately narrow — type coercion only, not date/number formatting functions like `TO_CHAR`, which have no GDTO category in v0.1.
+**`sqlglot` mapping:** `exp.Cast`. Scope is deliberately narrow — type coercion only, not date/number formatting functions like `TO_CHAR`, which have no GDT category in v0.1.
 
 **Generic ANSI example:**
 
@@ -280,7 +280,7 @@ SELECT CAST(order_id AS VARCHAR) AS order_id_str FROM orders
 }
 ```
 
-**Dialect variants — same GDTO output, different spelling (see `docs/decisions.md` 0001):**
+**Dialect variants — same GDT output, different spelling (see `docs/decisions.md` 0001):**
 
 Snowflake / BigQuery safe-cast:
 
@@ -304,11 +304,11 @@ Both normalize to:
 }
 ```
 
-`target_type` is normalized to the GDTO tagger's own lowercase type vocabulary (`numeric`), not preserved as the dialect's literal spelling (`NUMBER` in Snowflake vs. `NUMERIC` in BigQuery) — this is the same schema-level-normalization principle applied to type names, not just to function shape.
+`target_type` is normalized to the GDT tagger's own lowercase type vocabulary (`numeric`), not preserved as the dialect's literal spelling (`NUMBER` in Snowflake vs. `NUMERIC` in BigQuery) — this is the same schema-level-normalization principle applied to type names, not just to function shape.
 
 **Edge cases:**
 
-- An *implicit* cast (no `CAST`/`TRY_CAST` in the source SQL, but the engine would coerce types anyway) is not tagged — GDTO only sees what `sqlglot` parses as an explicit `exp.Cast` node. Implicit coercion is invisible to a syntax-level tagger by construction.
+- An *implicit* cast (no `CAST`/`TRY_CAST` in the source SQL, but the engine would coerce types anyway) is not tagged — GDT only sees what `sqlglot` parses as an explicit `exp.Cast` node. Implicit coercion is invisible to a syntax-level tagger by construction.
 - `CAST(x AS VARCHAR(50))` — parameterized types: `target_type` is `"varchar"`; the length parameter is currently dropped. If precision/scale/length ever matters to a consumer, that's a candidate future field, not present in v0.1.
 
 ---
@@ -362,7 +362,7 @@ FROM orders
 }
 ```
 
-**Dialect variants — same GDTO output, different spelling (this is the concrete case for the decision in `docs/decisions.md` 0001):**
+**Dialect variants — same GDT output, different spelling (this is the concrete case for the decision in `docs/decisions.md` 0001):**
 
 Snowflake `IFF`:
 
@@ -392,7 +392,7 @@ Both normalize to the **same** shape as the searched-`CASE` example above:
 }
 ```
 
-A single-branch `IFF`/`IF()` maps onto `conditional`'s `branches` array as a one-element array (rather than getting its own category or a `branches`-of-length-1-only special case) — a two-branch `IFF` and an equivalent two-`WHEN` `CASE` are indistinguishable in GDTO output, which is the point.
+A single-branch `IFF`/`IF()` maps onto `conditional`'s `branches` array as a one-element array (rather than getting its own category or a `branches`-of-length-1-only special case) — a two-branch `IFF` and an equivalent two-`WHEN` `CASE` are indistinguishable in GDT output, which is the point.
 
 **Edge cases:**
 
@@ -451,7 +451,7 @@ FROM (SELECT customer_id, COUNT(*) AS order_count FROM orders GROUP BY customer_
 
 ## `wildcard_select`
 
-**Meaning:** a `SELECT *` (or `t.*`) wildcard — selecting all columns rather than explicitly enumerating them. Exists so a consumer can build a rule like "forbid `SELECT *`" or "only allow `SELECT * EXCEPT(...)` for known-safe exclusions"; without it, `SELECT *` was invisible to GDTO (it's an `exp.Star` node, not an `exp.Alias`, so it doesn't match `rename` or `compute`).
+**Meaning:** a `SELECT *` (or `t.*`) wildcard — selecting all columns rather than explicitly enumerating them. Exists so a consumer can build a rule like "forbid `SELECT *`" or "only allow `SELECT * EXCEPT(...)` for known-safe exclusions"; without it, `SELECT *` was invisible to GDT (it's an `exp.Star` node, not an `exp.Alias`, so it doesn't match `rename` or `compute`).
 
 **`sqlglot` mapping:** `exp.Star` — appears bare (`SELECT *`) or as the `this` of a qualified `exp.Column` (`t.*`). Dialect-specific `EXCEPT(...)` support is exposed as extra args on the same node in dialects that have it (BigQuery, Snowflake, DuckDB).
 
@@ -502,7 +502,7 @@ SELECT * EXCEPT (internal_id, updated_at) FROM orders
 
 - `REPLACE(...)` (BigQuery-style `SELECT * REPLACE (upper(name) AS name)`) is explicitly out of scope for v1 — no field captures it. Known gap, not an oversight; a plain `wildcard_select` entry is still emitted for the `*` itself, just without the replacement detail. Candidate for a future MINOR bump (a `replace_columns` field) if this turns out to matter in practice.
 - `COUNT(*)` does **not** produce a `wildcard_select` entry — that `*` is a function-call argument (`exp.Star` inside `exp.Count`), not a `SELECT *` in the projection list. Only `exp.Star` nodes appearing directly in the SELECT list are tagged here.
-- A query with both a wildcard and explicit columns (`SELECT *, computed_col AS x FROM t`) produces a `wildcard_select` entry for the `*` and, independently, whatever category the other selected expressions warrant (`compute` for `computed_col AS x` above) — the categories aren't exclusive of each other, same as everywhere else in GDTO.
+- A query with both a wildcard and explicit columns (`SELECT *, computed_col AS x FROM t`) produces a `wildcard_select` entry for the `*` and, independently, whatever category the other selected expressions warrant (`compute` for `computed_col AS x` above) — the categories aren't exclusive of each other, same as everywhere else in GDT.
 
 ---
 
@@ -700,7 +700,7 @@ SELECT ai_query('my-endpoint', prompt_text) AS response FROM support_tickets
 **Edge cases:**
 
 - An unrecognized AI-shaped function call (not yet in the tagger's allowlist) is not tagged `ai_function` — it silently falls through to `udf` instead (see below), since the tagger has no way to distinguish "unknown AI function" from "unknown UDF" by name alone. This is the expected failure mode of name-based detection, not a bug to work around per-query.
-- GDTO does not enumerate specific AI/ML function names anywhere in the schema or this doc, deliberately — see `docs/decisions.md` (0003) for why.
+- GDT does not enumerate specific AI/ML function names anywhere in the schema or this doc, deliberately — see `docs/decisions.md` (0003) for why.
 
 ---
 
@@ -728,7 +728,7 @@ FROM customers
 **Edge cases:**
 
 - `ai_function` and `udf` are **mutually exclusive** by the precedence rule above — this is a deliberate exception to the "categories overlap" pattern from `docs/decisions.md` (0002), because here the two categories are competing classifications of the same node, not orthogonal signals about different aspects of it.
-- A genuine dialect builtin that `sqlglot` doesn't yet recognize for that dialect (parses as `exp.Anonymous` even though it's not actually user-defined) is indistinguishable from a real UDF at this layer — a known false-positive source, not solvable without a per-dialect builtin registry GDTO doesn't maintain.
+- A genuine dialect builtin that `sqlglot` doesn't yet recognize for that dialect (parses as `exp.Anonymous` even though it's not actually user-defined) is indistinguishable from a real UDF at this layer — a known false-positive source, not solvable without a per-dialect builtin registry GDT doesn't maintain.
 
 ---
 
@@ -770,4 +770,4 @@ SELECT customer_id, HASH(email) AS email_hash FROM customers
 **Edge cases:**
 
 - Hashing multiple columns together (`SHA2(CONCAT(first_name, last_name), 256)`) still produces one `column_hash` entry — `argument_summary` captures the whole argument expression as a string, and `source_columns` lists every column referenced within it (`["first_name", "last_name"]`), same convention as `compute`.
-- `column_hash` doesn't imply anything about *why* a column is hashed (PII masking vs. a dedup surrogate key vs. a partition key) — that judgment is a consumer's rule to build on top of this tag, not something GDTO infers.
+- `column_hash` doesn't imply anything about *why* a column is hashed (PII masking vs. a dedup surrogate key vs. a partition key) — that judgment is a consumer's rule to build on top of this tag, not something GDT infers.
