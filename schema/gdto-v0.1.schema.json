@@ -55,7 +55,15 @@
           "items": {
             "type": "object",
             "required": ["output", "expression_summary"],
-            "properties": { "output": { "type": "string" }, "expression_summary": { "type": "string" } }
+            "properties": {
+              "output": { "type": "string" },
+              "expression_summary": { "type": "string" },
+              "source_columns": {
+                "type": "array",
+                "items": { "type": "string" },
+                "description": "Column names referenced anywhere in the computed expression (every exp.Column found in that subtree). Omitted or empty if the expression references no columns (e.g. a literal-only expression)."
+              }
+            }
           }
         },
         "aggregate": {
@@ -73,6 +81,11 @@
                 "type": "array",
                 "items": { "type": "string" },
                 "description": "Summaries of the query's GROUP BY expressions (exp.Group.expressions); empty/absent if the aggregate has no GROUP BY (e.g. a bare scalar aggregate)"
+              },
+              "source_columns": {
+                "type": "array",
+                "items": { "type": "string" },
+                "description": "Column names referenced in the aggregated argument expression. Omitted or empty for COUNT(*) (no column argument)."
               }
             }
           }
@@ -104,6 +117,11 @@
                   "start": { "type": "string", "description": "e.g. 'UNBOUNDED PRECEDING', '1 PRECEDING', 'CURRENT ROW'" },
                   "end": { "type": "string", "description": "e.g. 'CURRENT ROW', 'UNBOUNDED FOLLOWING'" }
                 }
+              },
+              "source_columns": {
+                "type": "array",
+                "items": { "type": "string" },
+                "description": "Column names referenced in the windowed function's own argument (e.g. 'amount' in SUM(amount) OVER (...)). Does not include partition_by/order_by columns — those are already structured separately."
               }
             }
           }
@@ -118,7 +136,12 @@
               "source_summary": { "type": "string", "description": "Summary of the expression being cast (exp.Cast.this)" },
               "target_type": { "type": "string", "description": "Target data type, lowercased, e.g. varchar, int, timestamp (exp.Cast.to)" },
               "output": { "type": "string", "description": "Output column alias, if the cast is aliased" },
-              "safe": { "type": "boolean", "description": "True for a safe/non-throwing cast variant (e.g. TRY_CAST, SAFE_CAST)" }
+              "safe": { "type": "boolean", "description": "True for a safe/non-throwing cast variant (e.g. TRY_CAST, SAFE_CAST)" },
+              "source_columns": {
+                "type": "array",
+                "items": { "type": "string" },
+                "description": "Column names referenced in the expression being cast (exp.Cast.this) — usually one, more if it's a compound expression like CAST(a + b AS int)."
+              }
             }
           }
         },
