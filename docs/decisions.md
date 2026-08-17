@@ -43,3 +43,24 @@ One category doesn't generalize cleanly: `subquery_cte` is SQL-native (`WITH` / 
 So the example above produces **both** a `compute` entry (`output: "is_active"`, `expression_summary: "CASE WHEN status = 'active' THEN 1 ELSE 0 END"`) **and** a `conditional` entry for the same `CASE`. See `docs/grammar.md` for the full worked example and more edge cases (a `CASE` nested inside arithmetic, a `CAST` inside a `CASE` branch, etc.).
 
 **Reasoning:** this mirrors how the spec already treats `subquery_cte` — the category table describes it as "a structural complexity signal, not itself a transformation," explicitly orthogonal to whatever else is happening in the query. Extending that same orthogonality to `conditional`/`cast`/`aggregate`/`window` is consistent, not a new pattern. It's also the more useful answer for actual consumers: lineage tooling cares whether `is_active` is derived (that's `compute`); a rule like "flag any `CASE` used in certain transformations" needs to see the `CASE` even when it's three levels deep inside an arithmetic expression that `compute` only ever describes as an opaque `expression_summary` string. Collapsing the two into a single tag would silently lose whichever signal the consumer needed.
+
+---
+
+## 0003 — `ai_function` and `udf` are detected by function name, not a dedicated AST node
+
+**Status:** Decided (v0.1).
+
+**Question:** every category up to this point (`join` through `unnest`) is grounded in a specific `sqlglot` AST node class — `exp.Case`, `exp.Cast`, `exp.JSONExtract`, etc. `ai_function` (calls to known AI/ML SQL functions — Snowflake Cortex `AI_COMPLETE`, BigQuery `ML.GENERATE_TEXT`, Databricks `ai_query`) and `udf` (calls to user-defined functions) have no such node to ground in — `sqlglot` parses both as an ordinary function call: a recognized dialect `Func` subclass if it happens to know the name, or `exp.Anonymous` if it doesn't. There's no `exp.AIFunction` or `exp.UserDefinedFunctionCall` node type to walk for. How should these two categories be detected at all?
+
+**Decision:** by function name, not by AST node type.
+
+- `ai_function`: the tagger maintains an allowlist of known AI/ML SQL function names per dialect (vendor-specific: Cortex functions for Snowflake, `ML.*`/`AI.*` for BigQuery, `ai_*` for Databricks, etc.) and matches the called function's name (schema/namespace-qualified as written) against it.
+- `udf`: the fallback for any function call that (a) doesn't match the `ai_function` allowlist, and (b) `sqlglot` doesn't recognize as a builtin for the query's dialect (in practice, this is usually `exp.Anonymous`).
+- **Precedence, making the two mutually exclusive** (unlike `compute`/the structural-signal categories in 0002): check the `ai_function` allowlist first. A call that matches is tagged `ai_function` only, never also `udf` — this is a deliberate departure from 0002's "categories overlap" pattern, because here the two categories are competing classifications of the *same* function-call node, not orthogonal signals about different aspects of it.
+
+**Reasoning:**
+
+- This is a real, acknowledged departure from how every other category is grounded, not a shortcut taken quietly. Flagging it here (rather than pretending name-matching is just as principled as AST-node matching) keeps the spec honest about where its guarantees are weaker.
+- The alternative — refusing to add these categories until `sqlglot` grows dedicated node types for them — isn't realistic. AI vendor functions are proliferating faster than any SQL parser's grammar can track them as first-class syntax, and UDFs are by definition unknowable to a generic parser (they're user-defined, not part of any dialect's grammar). Name-based detection is the only mechanism that can work here at all.
+- Consequence for implementations: `madflow-sqlops` (or any tagger) must ship and actively maintain its own AI-function allowlist. GDTO deliberately does **not** enumerate specific vendor function names in the schema or this doc — that list will churn faster than this spec's release cadence, and hard-coding it here would make the spec stale on day one. Expect real false negatives (a brand-new or renamed AI function not yet in the allowlist gets silently missed, not misclassified — it just isn't tagged at all) and occasional false positives on `udf` (a genuine dialect builtin `sqlglot` doesn't yet recognize looks identical to a real UDF at the AST level).
+- `column_hash` (hashing functions — `MD5`, `SHA256`, dialect `HASH`/`FARM_FINGERPRINT`) is a hybrid, not a third instance of pure name-based grounding: it's grounded primarily in real dedicated `sqlglot` nodes (`exp.MD5`, `exp.SHA`, `exp.SHA2`), with name-matching used only as a fallback for the dialect-specific hash functions `sqlglot` has no dedicated class for. Don't conflate its grounding confidence with `ai_function`/`udf`'s — it's closer to `conditional`/`cast`'s dialect-normalization story than to this decision's.
