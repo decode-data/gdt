@@ -8,7 +8,7 @@
   "properties": {
     "gdt_version": {
       "type": "string",
-      "const": "0.1"
+      "const": "0.2"
     },
     "operations": {
       "type": "object",

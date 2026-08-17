@@ -1,4 +1,4 @@
-# GDT v0.1 — Grammar
+# GDT v0.2 — Grammar
 
 The full grammar reference: what each category means, its `sqlglot` mapping, at least one worked example with its expected GDT output, and known edge cases. `docs/categories.md` is the compact table version of this for quick LLM priming; this doc carries the discussion. The authoritative shape for every field below is `schema/gdt-v0.1.schema.json` — if this doc and the schema ever disagree, the schema wins and this doc has a bug.
 
