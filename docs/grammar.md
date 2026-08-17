@@ -503,3 +503,160 @@ SELECT * EXCEPT (internal_id, updated_at) FROM orders
 - `REPLACE(...)` (BigQuery-style `SELECT * REPLACE (upper(name) AS name)`) is explicitly out of scope for v1 — no field captures it. Known gap, not an oversight; a plain `wildcard_select` entry is still emitted for the `*` itself, just without the replacement detail. Candidate for a future MINOR bump (a `replace_columns` field) if this turns out to matter in practice.
 - `COUNT(*)` does **not** produce a `wildcard_select` entry — that `*` is a function-call argument (`exp.Star` inside `exp.Count`), not a `SELECT *` in the projection list. Only `exp.Star` nodes appearing directly in the SELECT list are tagged here.
 - A query with both a wildcard and explicit columns (`SELECT *, computed_col AS x FROM t`) produces a `wildcard_select` entry for the `*` and, independently, whatever category the other selected expressions warrant (`compute` for `computed_col AS x` above) — the categories aren't exclusive of each other, same as everywhere else in GDTO.
+
+---
+
+## `json_parse`
+
+**Meaning:** parsing a string or variant value into a JSON-typed value.
+
+**`sqlglot` mapping:** `exp.ParseJSON`.
+
+**Example:**
+
+```sql
+-- Snowflake / BigQuery
+SELECT PARSE_JSON(raw_payload) AS payload FROM events
+```
+
+```json
+{
+  "json_parse": [
+    { "source_summary": "raw_payload", "output": "payload", "safe": false, "source_columns": ["raw_payload"] }
+  ]
+}
+```
+
+**Safe variant:**
+
+```sql
+SELECT TRY_PARSE_JSON(raw_payload) AS payload FROM events
+```
+
+```json
+{
+  "json_parse": [
+    { "source_summary": "raw_payload", "output": "payload", "safe": true, "source_columns": ["raw_payload"] }
+  ]
+}
+```
+
+**Edge cases:**
+
+- `json_parse` is distinct from `cast` even though both are type-coercion-flavored — `exp.ParseJSON` is its own node, not `exp.Cast`, and there's no requirement that a consumer treat them the same way (a `CAST(x AS VARIANT)` and a `PARSE_JSON(x)` aren't always equivalent at the engine level, e.g. `CAST` on an already-valid-JSON string vs. `PARSE_JSON` doing actual parsing/validation).
+- A `PARSE_JSON(...)` call that isn't aliased has no `output`, same convention as unaliased `aggregate`/`cast`/`window` entries.
+
+---
+
+## `json_extract`
+
+**Meaning:** extracting a value from a JSON/semi-structured object by path.
+
+**`sqlglot` mapping:** `exp.JSONExtract` (returns a nested JSON value) / `exp.JSONExtractScalar` (returns a scalar). Dialect-specific spellings normalize onto this same shape (see `docs/decisions.md`, 0001) — this is the concrete case for that decision, alongside `conditional`/`cast`.
+
+**Generic example (scalar extraction):**
+
+```sql
+SELECT payload ->> 'email' AS user_email FROM events
+```
+
+```json
+{
+  "json_extract": [
+    { "source_summary": "payload", "path": "$.email", "scalar": true, "output": "user_email", "source_columns": ["payload"] }
+  ]
+}
+```
+
+**Dialect variants — same normalized shape:**
+
+```sql
+-- BigQuery
+SELECT JSON_VALUE(payload, '$.email') AS user_email FROM events
+```
+
+```sql
+-- Snowflake (colon path operator)
+SELECT payload:email::string AS user_email FROM events
+```
+
+Both normalize to the same `json_extract` shape as the Postgres example above (the Snowflake variant also produces a `cast` entry for the trailing `::string`, since that's an independent `exp.Cast` node — see `docs/decisions.md` 0002 on categories not being mutually exclusive).
+
+**Non-scalar extraction** (`scalar: false`):
+
+```sql
+SELECT payload -> 'address' AS address_json FROM events
+```
+
+```json
+{
+  "json_extract": [
+    { "source_summary": "payload", "path": "$.address", "scalar": false, "output": "address_json", "source_columns": ["payload"] }
+  ]
+}
+```
+
+**Edge cases:**
+
+- Chained path access (`payload -> 'user' -> 'address' ->> 'city'`) is represented as **one** `json_extract` entry with the full merged path (`path: "$.user.address.city"`, `scalar: true`), not one entry per `->`/`->>` hop — `path` is the fully resolved path to the final extraction, matching how a single `JSON_VALUE(payload, '$.user.address.city')` call would tag.
+- `source_summary` is always the innermost source expression (`payload` above), even for chained access — not the intermediate sub-extraction.
+
+---
+
+## `unnest`
+
+**Meaning:** unnesting an array or semi-structured value into rows.
+
+**`sqlglot` mapping:** `exp.Unnest`. **Confidence note:** this category is grounded with confidence in `exp.Unnest` itself (BigQuery/DuckDB/Postgres `UNNEST(...)`). Dialect-specific table functions that do the same logical thing — Snowflake `LATERAL FLATTEN(input => ...)`, Spark/Hive `LATERAL VIEW EXPLODE(...)` — are *expected* to normalize onto this same shape per the dialect-normalization decision (`docs/decisions.md`, 0001), but the exact `sqlglot` AST node those parse to (and whether `sqlglot` already unifies them with `exp.Unnest` or leaves them as separate function-call nodes) needs confirming against real parses when this category is implemented. Flagged honestly rather than asserted — don't treat the Snowflake/Spark examples below as verified `sqlglot` behavior the way the rest of this document's examples are.
+
+**Example:**
+
+```sql
+-- BigQuery / DuckDB / Postgres
+SELECT o.order_id, tag
+FROM orders o, UNNEST(o.tags) AS tag
+```
+
+```json
+{
+  "unnest": [
+    { "source_summary": "o.tags", "alias": "tag", "ordinality": false, "location": "from", "source_columns": ["tags"] }
+  ]
+}
+```
+
+**With ordinality:**
+
+```sql
+SELECT o.order_id, tag, idx
+FROM orders o, UNNEST(o.tags) WITH ORDINALITY AS t(tag, idx)
+```
+
+```json
+{
+  "unnest": [
+    { "source_summary": "o.tags", "alias": "tag", "ordinality": true, "location": "from", "source_columns": ["tags"] }
+  ]
+}
+```
+
+**Expected (unverified) dialect equivalents:**
+
+```sql
+-- Snowflake
+SELECT o.order_id, f.value AS tag
+FROM orders o, LATERAL FLATTEN(input => o.tags) f
+```
+
+```sql
+-- Spark / Hive
+SELECT o.order_id, tag
+FROM orders o LATERAL VIEW EXPLODE(o.tags) t AS tag
+```
+
+Both are expected to normalize to the same `unnest` shape as the BigQuery example — pending the confidence-note verification above.
+
+**Edge cases:**
+
+- `UNNEST` used directly in the `SELECT` list rather than a table reference (some dialects allow this) isn't distinguished from the `FROM`/`JOIN` form by a different `kind` — v0.1 only tracks `location` (`from`/`join`), not this finer distinction. Candidate gap if it turns out to matter.
+- Unnesting a literal array (`UNNEST([1, 2, 3])`) has an empty or absent `source_columns`, same convention as `COUNT(*)` and literal-only `compute` expressions.
