@@ -1,6 +1,6 @@
 # GDTO — Grammar of Data Transformation Operations
 
-**Status:** v0.1 — expect revision once real SQL patterns surface during decode-madflow's Pinter rollout.
+**Status:** v0.1 — expect revision as real-world SQL patterns surface from downstream implementations.
 **License:** Apache 2.0 — a spec meant to be reimplemented against parsers other than `sqlglot` someday; the patent grant matters more here than for a single library.
 
 ## What this is
@@ -10,8 +10,8 @@ A versioned taxonomy of SQL transformation operations, plus a JSON Schema for th
 ## What this is not
 
 - Not a linter, not a rules engine, not a lineage tool. Those are consumers of GDTO output, not part of the spec.
-- Not tied to dbt, though its first consumer (`decode-madflow`) is a dbt-focused tool.
-- Not a formatter/generator spec — that's a separate concern (`style.yml` in `decode-madflow`).
+- Not tied to dbt, or to any particular transformation tool or data stack — consumers may target dbt, plain SQL pipelines, a pandas/Spark job, or something else entirely.
+- Not a formatter/generator spec — style/formatting rules are a separate concern owned by whatever consumes GDTO output.
 
 ## v0.1 categories
 
@@ -32,7 +32,7 @@ Grounded in `sqlglot`'s `expressions` module (`core.py` for base nodes, `query.p
 
 See `docs/categories.md` for a compact, LLM-citation-friendly version of this table on its own.
 
-The `rename`/`compute` split matters most in practice: "is the immediate child of this `Alias` a bare `Column`" is the whole test, and it's what backs a rule like "staging models may only rename, never compute."
+The `rename`/`compute` split matters most in practice: "is the immediate child of this `Alias` a bare `Column`" is the whole test, and it's what backs a rule like "certain transformations may only rename, never compute."
 
 ## Output shape
 
@@ -64,7 +64,7 @@ GDTO isn't invokable, so it doesn't need a Skill — but it should be citation-f
 
 ## Possible future addition: a GDTO-native ruleset + verifier
 
-Not built now. "Which GDTO operations are allowed on which matched models" is a GDTO-level concept, distinct from decode-madflow's own `rules.yml` (which also covers PII/style/strategy — app-specific concerns that don't belong here). If this ever gets built, it's a minimal, standalone, GDTO-only ruleset schema + CLI verifier living in this repo — deliberately not in `madflow-sqlops`, which stays rule-free by design.
+Not built now. "Which GDTO operations are allowed on which matched models" is a GDTO-level concept, distinct from a consuming application's own rules layer (which may also cover PII/style/strategy — app-specific concerns that don't belong here). If this ever gets built, it's a minimal, standalone, GDTO-only ruleset schema + CLI verifier living in this repo — deliberately not in `madflow-sqlops`, which stays rule-free by design.
 
 ## Status / open tasks
 
