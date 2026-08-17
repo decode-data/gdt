@@ -199,6 +199,62 @@
               }
             }
           }
+        },
+        "json_parse": {
+          "type": "array",
+          "description": "One entry per exp.ParseJSON — parsing a string/variant into a JSON-typed value (e.g. Snowflake/BigQuery PARSE_JSON).",
+          "items": {
+            "type": "object",
+            "required": ["source_summary"],
+            "properties": {
+              "source_summary": { "type": "string", "description": "The string/variant expression being parsed (exp.ParseJSON.this)" },
+              "output": { "type": "string", "description": "Output column alias, if aliased" },
+              "safe": { "type": "boolean", "description": "True for a safe/non-throwing parse variant (e.g. TRY_PARSE_JSON)" },
+              "source_columns": {
+                "type": "array",
+                "items": { "type": "string" },
+                "description": "Column names referenced in the parsed expression"
+              }
+            }
+          }
+        },
+        "json_extract": {
+          "type": "array",
+          "description": "One entry per JSON path extraction — exp.JSONExtract / exp.JSONExtractScalar. Dialect-specific spellings (Postgres ->/->>, Snowflake : colon operator, BigQuery JSON_VALUE/JSON_QUERY) normalize onto this same shape per docs/decisions.md (0001).",
+          "items": {
+            "type": "object",
+            "required": ["source_summary", "path"],
+            "properties": {
+              "source_summary": { "type": "string", "description": "The JSON/object/variant expression being accessed (exp.JSONExtract.this)" },
+              "path": { "type": "string", "description": "Normalized JSON path, e.g. '$.field.subfield' (exp.JSONExtract.expression)" },
+              "scalar": { "type": "boolean", "description": "True if the extraction returns a scalar (->>, JSON_VALUE, exp.JSONExtractScalar) rather than a nested JSON value (->, JSON_QUERY, exp.JSONExtract)" },
+              "output": { "type": "string", "description": "Output column alias, if aliased" },
+              "source_columns": {
+                "type": "array",
+                "items": { "type": "string" },
+                "description": "Column names referenced in the source JSON expression"
+              }
+            }
+          }
+        },
+        "unnest": {
+          "type": "array",
+          "description": "One entry per array/semi-structured unnest — exp.Unnest. Dialect-specific table functions (Snowflake LATERAL FLATTEN, Spark LATERAL VIEW EXPLODE) are expected to normalize onto this same shape per docs/decisions.md (0001); see docs/grammar.md for confidence notes on that mapping.",
+          "items": {
+            "type": "object",
+            "required": ["source_summary"],
+            "properties": {
+              "source_summary": { "type": "string", "description": "The array/semi-structured expression being unnested (exp.Unnest.expressions)" },
+              "alias": { "type": "string", "description": "Output row alias for the unnested elements, if present" },
+              "ordinality": { "type": "boolean", "description": "True if WITH ORDINALITY / an offset-index column is requested (exp.Unnest.offset)" },
+              "location": { "type": "string", "description": "Where it's referenced, e.g. from, join" },
+              "source_columns": {
+                "type": "array",
+                "items": { "type": "string" },
+                "description": "Column names referenced in the unnested expression"
+              }
+            }
+          }
         }
       },
       "additionalProperties": false

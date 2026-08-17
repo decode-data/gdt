@@ -30,6 +30,9 @@ Grounded in `sqlglot`'s `expressions` module (`core.py` for base nodes, `query.p
 | `conditional` | `exp.Case` | CASE/WHEN logic — dialect equivalents (`IFF`, `IF()`) normalize to the same shape |
 | `subquery_cte` | `exp.With` / `exp.CTE` / `exp.Subquery` | Structural complexity signal, not itself a transformation |
 | `wildcard_select` | `exp.Star` | `SELECT *` or `t.*`, optionally with dialect `EXCEPT(...)`. `REPLACE(...)` out of scope |
+| `json_parse` | `exp.ParseJSON` | String/variant parsed as JSON (`PARSE_JSON`) |
+| `json_extract` | `exp.JSONExtract` / `exp.JSONExtractScalar` | Path extraction — `->`/`->>`, `:`, `JSON_VALUE`/`JSON_QUERY` normalize to the same shape |
+| `unnest` | `exp.Unnest` | Array/semi-structured unnest. Dialect table functions (`LATERAL FLATTEN`, `LATERAL VIEW EXPLODE`) expected to normalize here |
 
 See `docs/categories.md` for a compact, LLM-citation-friendly version of this table on its own.
 

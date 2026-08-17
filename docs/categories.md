@@ -15,6 +15,9 @@ Compact reference, kept separate from the full README so an LLM (or a human) can
 | `conditional` | `exp.Case` | CASE/WHEN logic — dialect equivalents (`IFF`, `IF()`) normalize to the same shape |
 | `subquery_cte` | `exp.With` / `exp.CTE` / `exp.Subquery` | Structural complexity signal, not itself a transformation |
 | `wildcard_select` | `exp.Star` | `SELECT *` or `t.*`, optionally with dialect `EXCEPT(...)`. `REPLACE(...)` out of scope |
+| `json_parse` | `exp.ParseJSON` | String/variant parsed as JSON (`PARSE_JSON`) |
+| `json_extract` | `exp.JSONExtract` / `exp.JSONExtractScalar` | Path extraction — `->`/`->>`, `:`, `JSON_VALUE`/`JSON_QUERY` normalize to the same shape |
+| `unnest` | `exp.Unnest` | Array/semi-structured unnest. Dialect table functions (`LATERAL FLATTEN`, `LATERAL VIEW EXPLODE`) expected to normalize here |
 
 GDTO version: 0.1.
 
