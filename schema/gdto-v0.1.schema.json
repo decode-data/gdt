@@ -1,0 +1,70 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/decode-data/gdto/schema/gdto-v0.1.schema.json",
+  "title": "GDTO Tagged Summary",
+  "description": "DRAFT — not yet finalized. The structured summary a GDTO-conformant tagger emits for a single SQL query/model.",
+  "type": "object",
+  "required": ["gdto_version", "operations"],
+  "properties": {
+    "gdto_version": {
+      "type": "string",
+      "const": "0.1"
+    },
+    "operations": {
+      "type": "object",
+      "description": "Keys are GDTO category names; each value is an array of occurrences (empty array if the category is absent).",
+      "properties": {
+        "join": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["kind", "tables"],
+            "properties": {
+              "kind": { "type": "string", "enum": ["inner", "left", "right", "full", "cross"] },
+              "tables": { "type": "array", "items": { "type": "string" } },
+              "keys": { "type": "array", "items": { "type": "string" } }
+            }
+          }
+        },
+        "filter": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["summary"],
+            "properties": { "summary": { "type": "string" } }
+          }
+        },
+        "set_op": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["kind"],
+            "properties": { "kind": { "type": "string", "enum": ["union", "union_all", "except", "intersect"] } }
+          }
+        },
+        "rename": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["source", "output"],
+            "properties": { "source": { "type": "string" }, "output": { "type": "string" } }
+          }
+        },
+        "compute": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["output", "expression_summary"],
+            "properties": { "output": { "type": "string" }, "expression_summary": { "type": "string" } }
+          }
+        },
+        "aggregate": { "type": "array", "items": { "type": "object" } },
+        "window": { "type": "array", "items": { "type": "object" } },
+        "cast": { "type": "array", "items": { "type": "object" } },
+        "conditional": { "type": "array", "items": { "type": "object" } },
+        "subquery_cte": { "type": "array", "items": { "type": "object" } }
+      },
+      "additionalProperties": false
+    }
+  }
+}

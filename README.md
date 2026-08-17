@@ -1,0 +1,75 @@
+# GDTO — Grammar of Data Transformation Operations
+
+**Status:** v0.1 — expect revision once real SQL patterns surface during decode-madflow's Pinter rollout.
+**License:** Apache 2.0 — a spec meant to be reimplemented against parsers other than `sqlglot` someday; the patent grant matters more here than for a single library.
+
+## What this is
+
+A versioned taxonomy of SQL transformation operations, plus a JSON Schema for the structured summary a parser emits when it tags a query against this grammar. It is **not** a parser, and it is **not** `sqlglot`-specific by design — it's grounded in `sqlglot`'s expression classes because that's the first (and for now, only) implementation, but the vocabulary is meant to outlive that choice. Anyone building a SQL-comprehension tool should be able to implement GDTO tagging without adopting `sqlglot`.
+
+## What this is not
+
+- Not a linter, not a rules engine, not a lineage tool. Those are consumers of GDTO output, not part of the spec.
+- Not tied to dbt, though its first consumer (`decode-madflow`) is a dbt-focused tool.
+- Not a formatter/generator spec — that's a separate concern (`style.yml` in `decode-madflow`).
+
+## v0.1 categories
+
+Grounded in `sqlglot`'s `expressions` module (`core.py` for base nodes, `query.py` for `Select`/`Union`/joins, `functions.py` for the `Func` base and aggregates):
+
+| Category | `sqlglot` mapping | Notes |
+|---|---|---|
+| `join` | `exp.Join` | Subtype via `.kind`/`.side`: inner/left/right/full/cross |
+| `filter` | `exp.Where` | Row-level filtering |
+| `set_op` | `exp.Union` / `exp.Except` / `exp.Intersect` | Subtype: union/union_all/except/intersect |
+| `rename` | `exp.Alias` wrapping a bare `exp.Column` | Pure passthrough — no transformation |
+| `compute` | `exp.Alias` wrapping anything else | `exp.Add`, `exp.Case`, `exp.Func`, etc. — a derived column |
+| `aggregate` | `exp.Group` + aggregate `exp.Func` subclasses | `Sum`, `Count`, `Avg`, `Min`, `Max`... |
+| `window` | `exp.Window` | OVER clause |
+| `cast` | `exp.Cast` | Type coercion |
+| `conditional` | `exp.Case` | CASE/WHEN logic |
+| `subquery_cte` | `exp.With` / `exp.CTE` / `exp.Subquery` | Structural complexity signal, not itself a transformation |
+
+See `docs/categories.md` for a compact, LLM-citation-friendly version of this table on its own.
+
+The `rename`/`compute` split matters most in practice: "is the immediate child of this `Alias` a bare `Column`" is the whole test, and it's what backs a rule like "staging models may only rename, never compute."
+
+## Output shape
+
+See `schema/gdto-v0.1.schema.json` for the authoritative JSON Schema. Example:
+
+```json
+{
+  "gdto_version": "0.1",
+  "operations": {
+    "join": [{ "kind": "inner", "tables": ["orders", "customers"], "keys": ["customer_id"] }],
+    "rename": [{ "source": "cust_id", "output": "customer_id" }],
+    "compute": [{ "output": "total_with_tax", "expression_summary": "amount * (1 + tax_rate)" }],
+    "filter": [{ "summary": "status = 'completed'" }]
+  }
+}
+```
+
+## Versioning
+
+Semantic versioning, independent of any implementation's release cadence. A MINOR bump adds a category or a field; a MAJOR bump changes the shape of an existing category. Implementations declare which GDTO version they target.
+
+## Relationship to madflow-sqlops
+
+`madflow-sqlops` (separate repo, MIT license) is the reference implementation: a `sqlglot`-based Python package that walks a query's AST and emits output conforming to this spec. This repo has no dependency on that one. That one depends on this one's schema version.
+
+## LLM-friendliness
+
+GDTO isn't invokable, so it doesn't need a Skill — but it should be citation-friendly for any LLM reasoning about GDTO output. The JSON Schema is the priming artifact, not this README — keep it as a single, complete, well-commented file an LLM can load whole into context. `docs/categories.md` is the compact reference for quick priming; this README carries the fuller discussion.
+
+## Possible future addition: a GDTO-native ruleset + verifier
+
+Not built now. "Which GDTO operations are allowed on which matched models" is a GDTO-level concept, distinct from decode-madflow's own `rules.yml` (which also covers PII/style/strategy — app-specific concerns that don't belong here). If this ever gets built, it's a minimal, standalone, GDTO-only ruleset schema + CLI verifier living in this repo — deliberately not in `madflow-sqlops`, which stays rule-free by design.
+
+## Status / open tasks
+
+- [x] v0.1 category table drafted
+- [ ] Formal JSON Schema finalized (draft in `schema/`)
+- [ ] Grammar doc with edge cases (e.g. a `Case` used inside a `compute` expression — `conditional`, `compute`, or both?)
+- [ ] CONTRIBUTING.md
+- No code in this repo — spec-only until `madflow-sqlops` needs to reference a tagged version.
