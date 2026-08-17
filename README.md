@@ -24,10 +24,10 @@ Grounded in `sqlglot`'s `expressions` module (`core.py` for base nodes, `query.p
 | `set_op` | `exp.Union` / `exp.Except` / `exp.Intersect` | Subtype: union/union_all/except/intersect |
 | `rename` | `exp.Alias` wrapping a bare `exp.Column` | Pure passthrough — no transformation |
 | `compute` | `exp.Alias` wrapping anything else | `exp.Add`, `exp.Case`, `exp.Func`, etc. — a derived column |
-| `aggregate` | `exp.Group` + aggregate `exp.Func` subclasses | `Sum`, `Count`, `Avg`, `Min`, `Max`... |
+| `aggregate` | `exp.Group` + aggregate `exp.Func` subclasses | `Sum`, `Count`, `Avg`, `Min`, `Max`... One entry per aggregate call, not per `GROUP BY` clause — group keys repeat on each call |
 | `window` | `exp.Window` | OVER clause |
 | `cast` | `exp.Cast` | Type coercion |
-| `conditional` | `exp.Case` | CASE/WHEN logic |
+| `conditional` | `exp.Case` | CASE/WHEN logic — dialect equivalents (`IFF`, `IF()`) normalize to the same shape |
 | `subquery_cte` | `exp.With` / `exp.CTE` / `exp.Subquery` | Structural complexity signal, not itself a transformation |
 
 See `docs/categories.md` for a compact, LLM-citation-friendly version of this table on its own.
@@ -60,7 +60,7 @@ Semantic versioning, independent of any implementation's release cadence. A MINO
 
 ## LLM-friendliness
 
-GDTO isn't invokable, so it doesn't need a Skill — but it should be citation-friendly for any LLM reasoning about GDTO output. The JSON Schema is the priming artifact, not this README — keep it as a single, complete, well-commented file an LLM can load whole into context. `docs/categories.md` is the compact reference for quick priming; this README carries the fuller discussion.
+GDTO isn't invokable, so it doesn't need a Skill — but it should be citation-friendly for any LLM reasoning about GDTO output. The JSON Schema is the priming artifact, not this README — keep it as a single, complete, well-commented file an LLM can load whole into context. `docs/categories.md` is the compact reference for quick priming; this README carries the fuller discussion; `docs/grammar.md` carries the full worked-example/edge-case reference; `docs/decisions.md` records the architectural decisions (dialect/engine normalization, category overlap) that affect implementations.
 
 ## Possible future addition: a GDTO-native ruleset + verifier
 
@@ -69,7 +69,9 @@ Not built now. "Which GDTO operations are allowed on which matched models" is a 
 ## Status / open tasks
 
 - [x] v0.1 category table drafted
-- [ ] Formal JSON Schema finalized (draft in `schema/`)
-- [ ] Grammar doc with edge cases (e.g. a `Case` used inside a `compute` expression — `conditional`, `compute`, or both?)
-- [ ] CONTRIBUTING.md
+- [x] Formal JSON Schema finalized (`schema/`)
+- [x] Grammar doc with edge cases (`docs/grammar.md`) — the `Case`-in-`compute` question is resolved in `docs/decisions.md` (0002): both, since `compute` and the structural-signal categories are independent
+- [x] CONTRIBUTING.md
+- [x] Dialect/engine normalization decision (`docs/decisions.md`, 0001)
+- [ ] First tagged release (`v0.1.0`) — see `CHANGELOG.md` and `CONTRIBUTING.md` → Releases
 - No code in this repo — spec-only until `madflow-sqlops` needs to reference a tagged version.
