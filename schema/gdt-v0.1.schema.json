@@ -1,18 +1,18 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/decode-data/gdto/schema/gdto-v0.1.schema.json",
-  "title": "GDTO Tagged Summary",
-  "description": "The structured summary a GDTO-conformant tagger emits for a single SQL query/model.",
+  "$id": "https://github.com/decode-data/gdto/schema/gdt-v0.1.schema.json",
+  "title": "GDT Tagged Summary",
+  "description": "The structured summary a GDT-conformant tagger emits for a single SQL query/model.",
   "type": "object",
-  "required": ["gdto_version", "operations"],
+  "required": ["gdt_version", "operations"],
   "properties": {
-    "gdto_version": {
+    "gdt_version": {
       "type": "string",
       "const": "0.1"
     },
     "operations": {
       "type": "object",
-      "description": "Keys are GDTO category names; each value is an array of occurrences (empty array if the category is absent).",
+      "description": "Keys are GDT category names; each value is an array of occurrences (empty array if the category is absent).",
       "properties": {
         "join": {
           "type": "array",

@@ -10,5 +10,5 @@
 
 ## Checklist
 
-- [ ] `schema/gdto-v0.1.schema.json` and `docs/categories.md` are in sync, if either changed
+- [ ] `schema/gdt-v0.1.schema.json` and `docs/categories.md` are in sync, if either changed
 - [ ] New categories were discussed in an issue before this PR
