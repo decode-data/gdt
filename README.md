@@ -1,6 +1,6 @@
-# GDT — Grammar of Data Transformation Operations
+# GDT — Grammar of Data Transformation
 
-**Status:** v0.1 — expect revision as real-world SQL patterns surface from downstream implementations.
+**Status:** v0.2 — expect revision as real-world SQL patterns surface from downstream implementations.
 **License:** Apache 2.0 — a spec meant to be reimplemented against parsers other than `sqlglot` someday; the patent grant matters more here than for a single library.
 
 ## What this is
@@ -13,7 +13,7 @@ A versioned taxonomy of SQL transformation operations, plus a JSON Schema for th
 - Not tied to dbt, or to any particular transformation tool or data stack — consumers may target dbt, plain SQL pipelines, a pandas/Spark job, or something else entirely.
 - Not a formatter/generator spec — style/formatting rules are a separate concern owned by whatever consumes GDT output.
 
-## v0.1 categories
+## v0.2 categories
 
 Grounded in `sqlglot`'s `expressions` module (`core.py` for base nodes, `query.py` for `Select`/`Union`/joins, `functions.py` for the `Func` base and aggregates):
 
@@ -47,7 +47,7 @@ See `schema/gdt-v0.1.schema.json` for the authoritative JSON Schema. Example:
 
 ```json
 {
-  "gdt_version": "0.1",
+  "gdt_version": "0.2",
   "operations": {
     "join": [{ "kind": "inner", "tables": ["orders", "customers"], "keys": ["customer_id"] }],
     "rename": [{ "source": "cust_id", "output": "customer_id" }],
@@ -80,5 +80,6 @@ Not built now. "Which GDT operations are allowed on which matched models" is a G
 - [x] Grammar doc with edge cases (`docs/grammar.md`) — the `Case`-in-`compute` question is resolved in `docs/decisions.md` (0002): both, since `compute` and the structural-signal categories are independent
 - [x] CONTRIBUTING.md
 - [x] Dialect/engine normalization decision (`docs/decisions.md`, 0001)
-- [ ] First tagged release (`v0.1.0`) — see `CHANGELOG.md` and `CONTRIBUTING.md` → Releases
+- [x] First tagged release (`v0.1.0`)
+- [x] Second tagged release (`v0.2.0`) — `wildcard_select`, `source_columns`, `json_parse`/`json_extract`/`unnest`, `ai_function`/`udf`/`column_hash`, `docs/decisions.md` (0003), rename from GDTO to GDT — see `CHANGELOG.md` and `CONTRIBUTING.md` → Releases
 - No code in this repo — spec-only until `madflow-sqlops` needs to reference a tagged version.

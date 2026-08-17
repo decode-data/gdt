@@ -48,7 +48,7 @@ So the example above produces **both** a `compute` entry (`output: "is_active"`,
 
 ## 0003 — `ai_function` and `udf` are detected by function name, not a dedicated AST node
 
-**Status:** Decided (v0.1).
+**Status:** Decided (v0.2).
 
 **Question:** every category up to this point (`join` through `unnest`) is grounded in a specific `sqlglot` AST node class — `exp.Case`, `exp.Cast`, `exp.JSONExtract`, etc. `ai_function` (calls to known AI/ML SQL functions — Snowflake Cortex `AI_COMPLETE`, BigQuery `ML.GENERATE_TEXT`, Databricks `ai_query`) and `udf` (calls to user-defined functions) have no such node to ground in — `sqlglot` parses both as an ordinary function call: a recognized dialect `Func` subclass if it happens to know the name, or `exp.Anonymous` if it doesn't. There's no `exp.AIFunction` or `exp.UserDefinedFunctionCall` node type to walk for. How should these two categories be detected at all?
 
